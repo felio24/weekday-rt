@@ -15,7 +15,7 @@ double hit_sphere(const point3& center, double radius, const ray& r) {
     if (discriminant < 0) {
         return -1.0;
     } else {
-        return (h - std::sqrt(discriminant)) / a; // we're only interested in the closest hit point (smallest t)
+        return (h - sqrt(discriminant)) / a; // we're only interested in the closest hit point (smallest t)
     }
 }
 
