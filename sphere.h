@@ -2,7 +2,6 @@
 #define SPHERE_H
 
 #include "hittable.h"
-#include "vec3.h"
 using namespace std;
 
 class sphere : public hittable {
@@ -31,7 +30,8 @@ class sphere : public hittable {
 
         rec.t = root;
         rec.p = r.at(rec.t);
-        rec.normal = (rec.p - center) / radius;
+        vec3 outward_normal = (rec.p - center) / radius; // P-C normalised by the radius
+        rec.set_face_normal(r, outward_normal);
 
         return true;
     }
