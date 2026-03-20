@@ -3,6 +3,8 @@
 
 #include "hittable.h"
 
+#define FILTER 0 // 0 = box, 1 = tent
+
 class camera {
   public:
     double  aspect_ratio = 1.0;     // Ratio of image width over height
@@ -11,6 +13,7 @@ class camera {
 
     void render(const hittable& world) {
         initialize();
+        srand(1234);
 
         cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
@@ -18,11 +21,22 @@ class camera {
             clog << "\rScanlines remaining: " << (image_height - j) << ' ' << flush;
             for (int i = 0; i < image_width; i++) {
                 color pixel_color(0,0,0);
+#if FILTER == 0
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     ray r = get_ray(i, j);
                     pixel_color += ray_color(r, world);
                 }
                 write_color(cout, pixel_samples_scale * pixel_color); // remember to divide by the number of samples in each pixel
+#else
+                double total_weight = 0.0;
+                for (int sample = 0; sample < samples_per_pixel; sample++) {
+                    double weight;
+                    ray r = get_ray_tent(i, j, weight);
+                    pixel_color += weight * ray_color(r, world);
+                    total_weight += weight;
+                }
+                write_color(cout, pixel_color / total_weight);
+#endif
             }
         }
         clog << "\rDone.                 \n";
@@ -77,6 +91,21 @@ class camera {
         auto ray_origin = center;
         auto ray_direction = pixel_sample - ray_origin; // P-C
 
+        return ray(ray_origin, ray_direction);
+    }
+
+    ray get_ray_tent(int i, int j, double& weight) {
+        auto offset = sample_square();
+        
+        auto pixel_sample = pixel00_loc
+                          + ((i + offset.x()) * pixel_delta_u)
+                          + ((j + offset.y()) * pixel_delta_v);
+
+        auto ray_origin = center;
+        auto ray_direction = pixel_sample - ray_origin; // P-C
+
+        // tent weight: separable product of two 1D tent functions
+        weight = (1.0 - abs(offset.x())) * (1.0 - abs(offset.y()));
         return ray(ray_origin, ray_direction);
     }
 
