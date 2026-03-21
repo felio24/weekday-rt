@@ -33,7 +33,7 @@ class camera {
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     double weight;
                     ray r = get_ray_tent(i, j, weight);
-                    pixel_color += weight * ray_color(r, world);
+                    pixel_color += weight * ray_color(r, max_depth, world);
                     total_weight += weight;
                 }
                 write_color(cout, pixel_color / total_weight);
@@ -123,7 +123,7 @@ class camera {
         hit_record rec;
         
         if (world.hit(r, interval(0.001, infinity), rec)) { // Minimum t updated to > 0.0 to solve shadow acne issue
-            vec3 direction = random_on_hemisphere(rec.normal);
+            vec3 direction = rec.normal + random_unit_vector(); // Lambertian distribution
             return 0.5 * ray_color(ray(rec.p, direction), depth-1, world);
             //return 0.5 * (rec.normal + color(1,1,1));
         }
