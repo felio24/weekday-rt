@@ -124,7 +124,7 @@ class camera {
         
         if (world.hit(r, interval(0.001, infinity), rec)) { // Minimum t updated to > 0.0 to solve shadow acne issue
             vec3 direction = rec.normal + random_unit_vector(); // Lambertian distribution
-            return 0.5 * ray_color(ray(rec.p, direction), depth-1, world);
+            return 0.1* ray_color(ray(rec.p, direction), depth-1, world);
             //return 0.5 * (rec.normal + color(1,1,1));
         }
         //auto t = hit_sphere(point3(0,0,-1.2), 0.5, r);
