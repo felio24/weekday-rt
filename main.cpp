@@ -11,8 +11,8 @@ using namespace std;
 struct materials {
     shared_ptr<material> ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
     shared_ptr<material> center = make_shared<lambertian>(color(0.1, 0.2, 0.5));
-    shared_ptr<material> left   = make_shared<metal>(color(0.8, 0.8, 0.8));
-    shared_ptr<material> right  = make_shared<metal>(color(0.8, 0.6, 0.2));
+    shared_ptr<material> left   = make_shared<metal>(color(0.8, 0.8, 0.8), 0.3);
+    shared_ptr<material> right  = make_shared<metal>(color(0.8, 0.6, 0.2), 1.0);
 };
 
 hittable_list scene_original(const materials& mat) {
@@ -27,7 +27,7 @@ hittable_list scene_original(const materials& mat) {
 hittable_list scene_custom(const materials& mat) {
     hittable_list scene;
     scene.add(make_shared<sphere>(point3(0, 3.09, -7.5), 3.5, mat.center));
-    scene.add(make_shared<sphere>(point3(-3.55, -3.09, -7.5), 3.5, mat.ground));
+    scene.add(make_shared<sphere>(point3(-3.55, -3.09, -7.5), 3.5, mat.left));
     scene.add(make_shared<sphere>(point3(3.55, -3.09, -7.5), 3.5, mat.right));
     return scene;
 }
