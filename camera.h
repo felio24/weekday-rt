@@ -2,6 +2,7 @@
 #define CAMERA_H
 
 #include "hittable.h"
+#include "material.h"
 
 #define FILTER 0 // 0 = box, 1 = tent
 
@@ -123,15 +124,14 @@ class camera {
         hit_record rec;
         
         if (world.hit(r, interval(0.001, infinity), rec)) { // Minimum t updated to > 0.0 to solve shadow acne issue
-            vec3 direction = rec.normal + random_unit_vector(); // Lambertian distribution
-            return 0.1* ray_color(ray(rec.p, direction), depth-1, world);
-            //return 0.5 * (rec.normal + color(1,1,1));
+            ray scattered;
+            color attenuation;
+            if (rec.mat->scatter(r, rec, attenuation, scattered))
+                return attenuation * ray_color(scattered, depth-1, world); // attenuation is a vec3 instead of a double like the previous simple implementation
+            return color(0,0,0);
+            //vec3 direction = rec.normal + random_unit_vector(); // Lambertian distribution
+            //return 0.1* ray_color(ray(rec.p, direction), depth-1, world);
         }
-        //auto t = hit_sphere(point3(0,0,-1.2), 0.5, r);
-        //if (t > 0.0) { // points with negative t lie behind the camera
-        //    vec3 N = unit_vector(r.at(t) - vec3(0,0,-1.2)); // P-C
-        //    return 0.5*color(N.x()+1, N.y()+1, N.z()+1);
-        //}
 
         vec3 unit_direction = unit_vector(r.direction());
         auto a = 0.5*(unit_direction.y() + 1.0);
