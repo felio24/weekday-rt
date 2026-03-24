@@ -1,10 +1,13 @@
 #ifndef HITTABLE_H
 #define HITTABLE_H
 
+class material;
+
 class hit_record {
   public:
     point3 p; // technically can be retrieved by t
     vec3 normal;
+    shared_ptr<material> mat;
     double t; // where ray hit the hittable
     bool front_face;
 
