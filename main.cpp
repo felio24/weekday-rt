@@ -11,7 +11,7 @@ using namespace std;
 struct materials {
     shared_ptr<material> ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
     shared_ptr<material> center = make_shared<lambertian>(color(0.1, 0.2, 0.5));
-    shared_ptr<material> left   = make_shared<metal>(color(0.8, 0.8, 0.8), 0.3);
+    shared_ptr<material> left   = make_shared<dielectric>(1.50);
     shared_ptr<material> right  = make_shared<metal>(color(0.8, 0.6, 0.2), 1.0);
 };
 
