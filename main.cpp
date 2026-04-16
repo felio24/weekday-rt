@@ -36,7 +36,15 @@ hittable_list scene_custom(const materials& mat) {
     return scene;
 }
 
-#define SCENE 0   // 0 = original, 1 = custom
+hittable_list scene_newcamera(const materials& mat) {
+    auto R = cos(pi/4);
+    hittable_list scene;
+    scene.add(make_shared<sphere>(point3(-R, 0, -1), R, mat.center));
+    scene.add(make_shared<sphere>(point3( R, 0, -1), R, mat.right));
+    return scene;
+}
+
+#define SCENE 2  // 0 = original, 1 = custom, 2 = new camera
 
 int main() 
 {
@@ -44,11 +52,11 @@ int main()
     hittable_list world;
 #if SCENE == 0
     world = scene_original(mat);
-#else
+#elif SCENE == 1
     world = scene_custom(mat);
+#else
+    world = scene_newcamera(mat);
 #endif
-
-    auto R = cos(pi/4);
 
     camera cam;
 
