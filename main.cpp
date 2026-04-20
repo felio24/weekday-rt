@@ -44,7 +44,7 @@ hittable_list scene_newcamera(const materials& mat) {
     return scene;
 }
 
-#define SCENE 2  // 0 = original, 1 = custom, 2 = new camera
+#define SCENE 0  // 0 = original, 1 = custom, 2 = new camera
 
 int main() 
 {
@@ -66,6 +66,9 @@ int main()
     cam.max_depth = 50;
 
     cam.vfov = 90;
+    cam.lookfrom = point3(-2,2,1);
+    cam.lookat   = point3(0,0,-1);
+    cam.vup      = vec3(0,1,0);
 
     cam.render(world);
 }
