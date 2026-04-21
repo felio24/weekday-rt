@@ -58,6 +58,22 @@ int main()
     world = scene_newcamera(mat);
 #endif
 
+    // X axis - red
+    for (float t = -4; t <= 4; t += 0.2) {
+        world.add(make_shared<sphere>(point3(t, 0, 0), 0.05, 
+            make_shared<lambertian>(color(1,0,0))));
+    }
+    // Y axis - green
+    for (float t = -4; t <= 4; t += 0.2) {
+        world.add(make_shared<sphere>(point3(0, t, 0), 0.05, 
+            make_shared<lambertian>(color(0,1,0))));
+    }
+    // Z axis - blue
+    for (float t = -4; t <= 4; t += 0.2) {
+        world.add(make_shared<sphere>(point3(0, 0, t), 0.05, 
+            make_shared<lambertian>(color(0,0,1))));
+    }
+
     camera cam;
 
     cam.aspect_ratio = 16.0 / 9.0;
@@ -65,9 +81,9 @@ int main()
     cam.samples_per_pixel = 100;
     cam.max_depth = 50;
 
-    cam.vfov = 90;
+    cam.vfov = 40;
     cam.lookfrom = point3(-2,2,1);
-    cam.lookat   = point3(0,0,-1);
+    cam.lookat   = point3(-0.2,0,-1);
     cam.vup      = vec3(0,1,0);
 
     cam.render(world);
