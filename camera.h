@@ -4,6 +4,8 @@
 #include "hittable.h"
 #include "material.h"
 
+#include <chrono>
+
 #define FILTER 0 // 0 = box, 1 = tent
 
 class camera {
@@ -21,6 +23,8 @@ class camera {
     void render(const hittable& world) {
         initialize();
         srand(1234);
+
+        auto start = chrono::high_resolution_clock::now();
 
         cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
@@ -46,7 +50,11 @@ class camera {
 #endif
             }
         }
+        auto end = chrono::high_resolution_clock::now();
+        chrono::duration<double> elapsed = end - start;
+
         clog << "\rDone.                 \n";
+        clog << "Render time: " << elapsed.count() << " seconds\n";
     }
 
   private:
