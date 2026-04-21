@@ -5,6 +5,7 @@
 #include "hittable_list.h"
 #include "material.h"
 #include "sphere.h"
+#include "box.h"
 
 using namespace std;
 
@@ -45,6 +46,7 @@ hittable_list scene_newcamera(const materials& mat) {
 }
 
 #define SCENE 0  // 0 = original, 1 = custom, 2 = new camera
+#define AXES 0 // 0 = don't print, 1 = print axes
 
 int main() 
 {
@@ -58,21 +60,22 @@ int main()
     world = scene_newcamera(mat);
 #endif
 
-    // X axis - red
-    for (float t = -4; t <= 4; t += 0.2) {
-        world.add(make_shared<sphere>(point3(t, 0, 0), 0.05, 
-            make_shared<lambertian>(color(1,0,0))));
-    }
-    // Y axis - green
-    for (float t = -4; t <= 4; t += 0.2) {
-        world.add(make_shared<sphere>(point3(0, t, 0), 0.05, 
-            make_shared<lambertian>(color(0,1,0))));
-    }
-    // Z axis - blue
-    for (float t = -4; t <= 4; t += 0.2) {
-        world.add(make_shared<sphere>(point3(0, 0, t), 0.05, 
-            make_shared<lambertian>(color(0,0,1))));
-    }
+#if AXES == 1
+    auto x_axis_mat = make_shared<lambertian>(color(1.0, 0.1, 0.1)); // red
+    auto y_axis_mat = make_shared<lambertian>(color(0.1, 1.0, 0.1)); // green
+    auto z_axis_mat = make_shared<lambertian>(color(0.1, 0.1, 1.0)); // blue
+
+    const double r = 0.025; // half-thickness of each axis bar
+
+    // X axis: long in X, thin in Y and Z
+    world.add(make_shared<box>(point3(-2, -r, -r), point3(2,  r,  r), x_axis_mat));
+
+    // Y axis: long in Y, thin in X and Z
+    world.add(make_shared<box>(point3(-r, -2, -r), point3( r, 2,  r), y_axis_mat));
+
+    // Z axis: long in Z, thin in X and Y
+    world.add(make_shared<box>(point3(-r, -r, -2), point3( r,  r, 2), z_axis_mat));
+#endif
 
     camera cam;
 
