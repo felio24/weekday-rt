@@ -48,7 +48,7 @@ hittable_list scene_newcamera(const materials& mat) {
 #define SCENE 0  // 0 = original, 1 = custom, 2 = new camera
 #define AXES 0 // 0 = don't print, 1 = print axes
 
-int main() 
+int main(int argc, char *argv[]) 
 {
     materials mat;
     hittable_list world;
@@ -66,23 +66,25 @@ int main()
     auto z_axis_mat = make_shared<lambertian>(color(0.1, 0.1, 1.0)); // blue
 
     const double r = 0.025; // half-thickness of each axis bar
+    const int axis_len = 7;
 
     // X axis: long in X, thin in Y and Z
-    world.add(make_shared<box>(point3(-2, -r, -r), point3(2,  r,  r), x_axis_mat));
+    world.add(make_shared<box>(point3(-axis_len, -r, -r), point3(axis_len, r, r), x_axis_mat));
 
     // Y axis: long in Y, thin in X and Z
-    world.add(make_shared<box>(point3(-r, -2, -r), point3( r, 2,  r), y_axis_mat));
+    world.add(make_shared<box>(point3(-r, -axis_len, -r), point3(r, axis_len, r), y_axis_mat));
 
     // Z axis: long in Z, thin in X and Y
-    world.add(make_shared<box>(point3(-r, -r, -2), point3( r,  r, 2), z_axis_mat));
+    world.add(make_shared<box>(point3(-r, -r, -axis_len), point3(r, r, axis_len), z_axis_mat));
 #endif
 
+    bool preview = argc > 1 && string(argv[1]) == "--preview";
     camera cam;
 
     cam.aspect_ratio = 16.0 / 9.0;
     cam.image_width = 400;
-    cam.samples_per_pixel = 100;
-    cam.max_depth = 50;
+    cam.samples_per_pixel = preview ? 4 : 100;
+    cam.max_depth = preview ? 10 : 50;
 
     cam.vfov = 20;
     cam.lookfrom = point3(-2,2,1);
