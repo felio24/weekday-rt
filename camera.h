@@ -71,10 +71,20 @@ class camera {
     vec3   defocus_disk_u;      // Defocus disk horizontal radius
     vec3   defocus_disk_v;      // Defocus disk vertical radius
 
+    // framebuffers
+    vector<vector<color>>  fb_color;
+    vector<vector<double>> fb_depth;
+    vector<vector<vec3>>   fb_normal;
+
     void initialize() {
         // Calculate the image height, and ensure that it's at least 1.
         image_height = int(image_width / aspect_ratio);
         image_height = (image_height < 1) ? 1 : image_height;
+
+        // resize framebuffers
+        fb_color.assign(image_height, vector<color>(image_width, color(0,0,0)));
+        fb_depth.assign(image_height, vector<double>(image_width, infinity)); // assume the ray hits nothing in the world
+        fb_normal.assign(image_height, vector<vec3>(image_width, vec3(0,0,0)));
 
         pixel_samples_scale = 1.0 / samples_per_pixel;
 
