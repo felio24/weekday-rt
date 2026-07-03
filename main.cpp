@@ -19,34 +19,63 @@ struct materials {
     shared_ptr<material> right  = make_shared<metal>(color(0.8, 0.6, 0.2), 1.0);
 };
 
-hittable_list scene_original(const materials& mat) {
-    hittable_list scene;
-    scene.add(make_shared<sphere>(point3(0.0,  0.0,    -1.2), 0.5, mat.center)); // the negative z places the sphere in front of the camera, so increasing absolute z also increases the distance of the sphere from the camera
-    scene.add(make_shared<sphere>(point3(0.0,  -100.5, -1.0), 100, mat.ground));
-    scene.add(make_shared<sphere>(point3(-1.0, 0.0,    -1.0), 0.5, mat.left));
-    scene.add(make_shared<sphere>(point3(-1.0, 0.0,    -1.0), 0.4, mat.bubble));
-    scene.add(make_shared<sphere>(point3(1.0,  0.0,    -1.0), 0.5, mat.right));
+struct scene_config {
+    hittable_list world;
+    camera        cam;
+};
+
+scene_config scene_original(const materials& mat) {
+    scene_config scene;
+    scene.world.add(make_shared<sphere>(point3(0.0,  0.0,    -1.2), 0.5, mat.center)); // the negative z places the sphere in front of the camera, so increasing absolute z also increases the distance of the sphere from the camera
+    scene.world.add(make_shared<sphere>(point3(0.0,  -100.5, -1.0), 100, mat.ground));
+    scene.world.add(make_shared<sphere>(point3(-1.0, 0.0,    -1.0), 0.5, mat.left));
+    scene.world.add(make_shared<sphere>(point3(-1.0, 0.0,    -1.0), 0.4, mat.bubble));
+    scene.world.add(make_shared<sphere>(point3(1.0,  0.0,    -1.0), 0.5, mat.right));
+
+    scene.cam.vfov     = 20;
+    scene.cam.lookfrom = point3(-2, 2, 1);;
+    scene.cam.lookat   = point3(-0.2, 0, -1);
+    scene.cam.vup      = vec3(0, 1, 0);
+    
+    scene.cam.defocus_angle = 10.0;
+    scene.cam.focus_dist    = 3.4;
     return scene;
 }
 
 // Larger scale scene -- bigger spheres, more breathing room between them
 // Better for testing camera angles and depth of field
-hittable_list scene_custom(const materials& mat) {
-    hittable_list scene;
-    scene.add(make_shared<sphere>(point3(0,     3.09,   -7.5),  3.5, mat.center));
-    scene.add(make_shared<sphere>(point3(-3.55, -3.09,  -7.5),  3.5, mat.left));
-    scene.add(make_shared<sphere>(point3(-3.55, -3.09,  -7.5),  3.0, mat.bubble));
-    scene.add(make_shared<sphere>(point3(3.55,  -3.09,  -7.5),  3.5, mat.right));
-    scene.add(make_shared<sphere>(point3(0.0,   -105.5, -10.0), 100, mat.ground));
+scene_config scene_custom(const materials& mat) {
+    scene_config scene;
+    scene.world.add(make_shared<sphere>(point3(0,     3.09,   -7.5),  3.5, mat.center));
+    scene.world.add(make_shared<sphere>(point3(-3.55, -3.09,  -7.5),  3.5, mat.left));
+    scene.world.add(make_shared<sphere>(point3(-3.55, -3.09,  -7.5),  3.0, mat.bubble));
+    scene.world.add(make_shared<sphere>(point3(3.55,  -3.09,  -7.5),  3.5, mat.right));
+    scene.world.add(make_shared<sphere>(point3(0.0,   -105.5, -10.0), 100, mat.ground));
+
+    scene.cam.vfov     = 25;
+    scene.cam.lookfrom = point3(5.5, 1.8, 5.5);
+    scene.cam.lookat   = point3(2.2, 1.3, -1);
+    scene.cam.vup      = vec3(0, 1, 0);
+    
+    scene.cam.defocus_angle = 5.0;
+    scene.cam.focus_dist    = 14.1;
     return scene;
 }
 
 // Minimal two-sphere scene for isolating camera parameter changes
-hittable_list scene_newcamera(const materials& mat) {
+scene_config scene_newcamera(const materials& mat) {
     auto R = cos(pi/4);
-    hittable_list scene;
-    scene.add(make_shared<sphere>(point3(-R, 0, -1), R, mat.center));
-    scene.add(make_shared<sphere>(point3( R, 0, -1), R, mat.right));
+    scene_config scene;
+    scene.world.add(make_shared<sphere>(point3(-R, 0, -1), R, mat.center));
+    scene.world.add(make_shared<sphere>(point3( R, 0, -1), R, mat.right));
+
+    scene.cam.vfov     = 20;
+    scene.cam.lookfrom = point3(-2, 2, 1);;
+    scene.cam.lookat   = point3(-0.2, 0, -1);
+    scene.cam.vup      = vec3(0, 1, 0);
+    
+    scene.cam.defocus_angle = 7.0;
+    scene.cam.focus_dist    = 2.9;
     return scene;
 }
 
@@ -56,14 +85,14 @@ hittable_list scene_newcamera(const materials& mat) {
 int main(int argc, char *argv[]) 
 {
     materials mat;
-    hittable_list world;
+    scene_config scene;
 
 #if SCENE == 0
-    world = scene_original(mat);
+    scene = scene_original(mat);
 #elif SCENE == 1
-    world = scene_custom(mat);
+    scene = scene_custom(mat);
 #else
-    world = scene_newcamera(mat);
+    scene = scene_newcamera(mat);
 #endif
 
 #if AXES == 1
@@ -76,11 +105,11 @@ int main(int argc, char *argv[])
     const int axis_len = 7;
 
     // X axis: long in X, thin in Y and Z
-    world.add(make_shared<box>(point3(-axis_len, -r, -r), point3(axis_len, r, r), x_axis_mat));
+    scene.world.add(make_shared<box>(point3(-axis_len, -r, -r), point3(axis_len, r, r), x_axis_mat));
     // Y axis: long in Y, thin in X and Z
-    world.add(make_shared<box>(point3(-r, -axis_len, -r), point3(r, axis_len, r), y_axis_mat));
+    scene.world.add(make_shared<box>(point3(-r, -axis_len, -r), point3(r, axis_len, r), y_axis_mat));
     // Z axis: long in Z, thin in X and Y
-    world.add(make_shared<box>(point3(-r, -r, -axis_len), point3(r, r, axis_len), z_axis_mat));
+    scene.world.add(make_shared<box>(point3(-r, -r, -axis_len), point3(r, r, axis_len), z_axis_mat));
 #endif
 
     bool preview   = false;
@@ -88,48 +117,28 @@ int main(int argc, char *argv[])
 
     for (int i = 1; i < argc; i++) {
         string arg = argv[i];
-
-        if (arg == "--preview")
-            preview = true;
-        else if (arg == "--debug")
-            debugView = true;
+        if (arg == "--preview") preview   = true;
+        if (arg == "--debug")   debugView = true;
     }
+
 
     // Camera setup
     // Preview mode uses low sample/depth counts for fast iteration
-    camera cam;
-
-    cam.aspect_ratio      = 16.0 / 9.0;
-    cam.image_width       = 400;
-    cam.samples_per_pixel = preview ? 10 : 100;
-    cam.max_depth         = preview ? 10 : 50;
-
-    cam.vfov     = 20;
-    cam.lookfrom = point3(-2,2,1);
-    cam.lookat   = point3(-0.2,0,-1);
-    cam.vup      = vec3(0,1,0);
-
-    cam.defocus_angle = 10.0;
-    cam.focus_dist    = 3.4;
-
-#if SCENE == 1
-    cam.vfov     = 25;
-    cam.lookfrom = point3(5.5,1.8,5.5);
-    cam.lookat   = point3(2.2,1.3,-1);
-
-    cam.defocus_angle = 5.0;
-    cam.focus_dist    = 14.1;
-#endif
+    scene.cam.aspect_ratio      = 16.0 / 9.0;
+    scene.cam.image_width       = 400;
+    scene.cam.samples_per_pixel = preview ? 10 : 100;
+    scene.cam.max_depth         = preview ? 10 : 50;
 
     if (debugView)
     {
-        auto focusPoint = cam.lookfrom + cam.focus_dist * unit_vector(cam.lookat - cam.lookfrom);
+        auto focusPoint = scene.cam.lookfrom 
+                            + scene.cam.focus_dist * unit_vector(scene.cam.lookat - scene.cam.lookfrom);
 
-        world.add(make_shared<sphere>(
+        scene.world.add(make_shared<sphere>(
             focusPoint,
             0.1,
             make_shared<lambertian>(color(1,0,0))));
     }
     
-    cam.render(world);
+    scene.cam.render(scene.world);
 }
