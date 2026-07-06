@@ -6,7 +6,6 @@
 #include <iostream>
 #include <limits>
 #include <memory>
-#include <vector>
 using namespace std;
 
 // Constants
