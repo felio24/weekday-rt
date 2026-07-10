@@ -29,18 +29,30 @@ class camera {
 
         auto start = chrono::high_resolution_clock::now();
 
+        // Geometry pass
+        for (int j = 0; j < image_height; j++) {
+            for (int i = 0; i < image_width; i++) {
+                auto pixel_center = pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
+                ray r(center, pixel_center - center);
+
+                get_ray_geometry(r, world, fb_depth[i][j], fb_normal[i][j]);
+            }
+        }
+
+        // Color pass
         cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
         for (int j = 0; j < image_height; j++) {
             clog << "\rScanlines remaining: " << (image_height - j) << ' ' << flush;
             for (int i = 0; i < image_width; i++) {
                 color pixel_color(0,0,0);
+                color aggregated_pixel_color(0,0,0);
 #if FILTER == 0
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     ray r = get_ray(i, j);
                     pixel_color += ray_color(r, max_depth, world);
                 }
-                write_color(cout, pixel_samples_scale * pixel_color); // remember to divide by the number of samples in each pixel
+                aggregated_pixel_color = pixel_samples_scale * pixel_color; // remember to divide by the number of samples in each pixel
 #else
                 double total_weight = 0.0;
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
@@ -49,13 +61,14 @@ class camera {
                     pixel_color += weight * ray_color(r, max_depth, world);
                     total_weight += weight;
                 }
-                write_color(cout, pixel_color / total_weight);
+                aggregated_pixel_color = pixel_color / total_weight;
 #endif
+                write_color(cout, aggregated_pixel_color);
             }
         }
         auto end = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed = end - start;
-
+                
         clog << "\rDone.                 \n";
         clog << "Render time: " << elapsed.count() << " seconds\n";
     }
@@ -72,7 +85,6 @@ class camera {
     vec3   defocus_disk_v;      // Defocus disk vertical radius
 
     // framebuffers
-    vector<vector<color>>  fb_color;
     vector<vector<double>> fb_depth;
     vector<vector<vec3>>   fb_normal;
 
@@ -82,9 +94,8 @@ class camera {
         image_height = (image_height < 1) ? 1 : image_height;
 
         // resize framebuffers
-        fb_color.assign(image_height, vector<color>(image_width, color(0,0,0)));
-        fb_depth.assign(image_height, vector<double>(image_width, infinity)); // assume the ray hits nothing in the world
-        fb_normal.assign(image_height, vector<vec3>(image_width, vec3(0,0,0)));
+        fb_depth.assign(image_width, vector<double>(image_height, infinity)); // assume the ray hits nothing in the world
+        fb_normal.assign(image_width, vector<vec3>(image_height, vec3(0,0,0)));
 
         pixel_samples_scale = 1.0 / samples_per_pixel;
 
@@ -150,6 +161,14 @@ class camera {
         // tent weight: separable product of two 1D tent functions
         weight = (1.0 - abs(offset.x())) * (1.0 - abs(offset.y()));
         return ray(ray_origin, ray_direction);
+    }
+
+    void get_ray_geometry(const ray& r, const hittable& world, double& out_depth, vec3& out_normal) const {
+        hit_record rec;
+        if (world.hit(r, interval(0.001, infinity), rec)) {
+            out_depth = rec.t;
+            out_normal = rec.normal;
+        }
     }
 
     vec3 sample_square() const {
