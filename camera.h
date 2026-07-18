@@ -7,6 +7,7 @@
 #include <chrono>
 
 #define FILTER 0 // 0 = box, 1 = tent
+#define DEBUG  0 // 0 = no depth and edge output, 1 = individual depth and edge outline printed
 
 class camera {
   public:
@@ -15,13 +16,16 @@ class camera {
     int     samples_per_pixel = 10;  // Count of random samples for each pixel
     int     max_depth         = 10;  // Maximum number of ray bounces into scene
 
-    double vfov = 90;  // Vertical view angle (field of view)
-    point3 lookfrom = point3(0,0,0);   // Point camera is looking from
-    point3 lookat   = point3(0,0,-1);  // Point camera is looking at
-    vec3   vup      = vec3(0,1,0);     // Camera-relative "up" direction
+    double vfov = 90;                 // Vertical view angle (field of view)
+    point3 lookfrom = point3(0,0,0);  // Point camera is looking from
+    point3 lookat   = point3(0,0,-1); // Point camera is looking at
+    vec3   vup      = vec3(0,1,0);    // Camera-relative "up" direction
 
-    double defocus_angle = 0;  // Variation angle of rays through each pixel
-    double focus_dist = 10;    // Distance from camera lookfrom point to plane of perfect focus
+    double defocus_angle = 0; // Variation angle of rays through each pixel
+    double focus_dist = 10;   // Distance from camera lookfrom point to plane of perfect focus
+
+    double depth_threshold  = 0.5; // For sobel edge detection
+    double normal_threshold = 0.8; // For sobel edge detection
 
     void render(const hittable& world) {
         initialize();
@@ -29,43 +33,10 @@ class camera {
 
         auto start = chrono::high_resolution_clock::now();
 
-        // Geometry pass
-        for (int j = 0; j < image_height; j++) {
-            for (int i = 0; i < image_width; i++) {
-                auto pixel_center = pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
-                ray r(center, pixel_center - center);
+        geometry_pass(world);
+        color_pass(world);
+        post_process();
 
-                get_ray_geometry(r, world, fb_depth[i][j], fb_normal[i][j]);
-            }
-        }
-
-        // Color pass
-        cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
-
-        for (int j = 0; j < image_height; j++) {
-            clog << "\rScanlines remaining: " << (image_height - j) << ' ' << flush;
-            for (int i = 0; i < image_width; i++) {
-                color pixel_color(0,0,0);
-                color aggregated_pixel_color(0,0,0);
-#if FILTER == 0
-                for (int sample = 0; sample < samples_per_pixel; sample++) {
-                    ray r = get_ray(i, j);
-                    pixel_color += ray_color(r, max_depth, world);
-                }
-                aggregated_pixel_color = pixel_samples_scale * pixel_color; // remember to divide by the number of samples in each pixel
-#else
-                double total_weight = 0.0;
-                for (int sample = 0; sample < samples_per_pixel; sample++) {
-                    double weight;
-                    ray r = get_ray_tent(i, j, weight);
-                    pixel_color += weight * ray_color(r, max_depth, world);
-                    total_weight += weight;
-                }
-                aggregated_pixel_color = pixel_color / total_weight;
-#endif
-                write_color(cout, aggregated_pixel_color);
-            }
-        }
         auto end = chrono::high_resolution_clock::now();
         chrono::duration<double> elapsed = end - start;
                 
@@ -87,6 +58,8 @@ class camera {
     // framebuffers
     vector<vector<double>> fb_depth;
     vector<vector<vec3>>   fb_normal;
+    vector<vector<color>>  fb_color;
+    vector<vector<double>> fb_edge;
 
     void initialize() {
         // Calculate the image height, and ensure that it's at least 1.
@@ -96,6 +69,8 @@ class camera {
         // resize framebuffers
         fb_depth.assign(image_width, vector<double>(image_height, infinity)); // assume the ray hits nothing in the world
         fb_normal.assign(image_width, vector<vec3>(image_height, vec3(0,0,0)));
+        fb_color.assign(image_width, vector<vec3>(image_height, color(0,0,0)));
+        fb_edge.assign(image_width, vector<double>(image_height, infinity));
 
         pixel_samples_scale = 1.0 / samples_per_pixel;
 
@@ -132,6 +107,56 @@ class camera {
         defocus_disk_v = v * defocus_radius;
     }
 
+    void geometry_pass(const hittable& world) {
+        // Populate depth and normal buffers
+        for (int j = 0; j < image_height; j++) {
+            for (int i = 0; i < image_width; i++) {
+                auto pixel_center = pixel00_loc + (i * pixel_delta_u) + (j * pixel_delta_v);
+                ray r(center, pixel_center - center);
+
+                hit_record rec;
+                if (world.hit(r, interval(0.001, infinity), rec)) {
+                    fb_depth[i][j] = rec.t;
+                    fb_normal[i][j] = rec.normal;
+                }
+            }
+        }
+    }
+
+    void color_pass(const hittable& world) {
+        cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+
+        for (int j = 0; j < image_height; j++) {
+            clog << "\rScanlines remaining: " << (image_height - j) << ' ' << flush;
+            for (int i = 0; i < image_width; i++) {
+                color pixel_color(0,0,0);
+                color aggregated_pixel_color(0,0,0);
+#if FILTER == 0
+                for (int sample = 0; sample < samples_per_pixel; sample++) {
+                    ray r = get_ray(i, j);
+                    pixel_color += ray_color(r, max_depth, world);
+                }
+                aggregated_pixel_color = pixel_samples_scale * pixel_color; // remember to divide by the number of samples in each pixel
+#else
+                double total_weight = 0.0;
+                for (int sample = 0; sample < samples_per_pixel; sample++) {
+                    double weight;
+                    ray r = get_ray_tent(i, j, weight);
+                    pixel_color += weight * ray_color(r, max_depth, world);
+                    total_weight += weight;
+                }
+                aggregated_pixel_color = pixel_color / total_weight;
+#endif
+                //write_color(cout, aggregated_pixel_color);
+                fb_color[i][j] = aggregated_pixel_color;
+            }
+        }
+    }
+
+    void post_process() {
+        compute_sobel_edges();
+    }
+
     ray get_ray(int i, int j) const {
         // Construct a camera ray originating from the defocus disk and directed at a randomly
         // sampled point around the pixel location i, j.
@@ -163,12 +188,85 @@ class camera {
         return ray(ray_origin, ray_direction);
     }
 
-    void get_ray_geometry(const ray& r, const hittable& world, double& out_depth, vec3& out_normal) const {
-        hit_record rec;
-        if (world.hit(r, interval(0.001, infinity), rec)) {
-            out_depth = rec.t;
-            out_normal = rec.normal;
+    template<typename T, typename Formatter>
+    void dump_buffer(const string& filename, const vector<vector<T>>& buffer, Formatter formatter) const {
+        ofstream file(filename);
+        if (!file.is_open()) { clog << "Error: could not open " << filename << "\n"; return; }
+        for (int j = 0; j < image_height; j++) {
+            for (int i = 0; i < image_width; i++) {
+                file << formatter(buffer[i][j]);
+                if (i < image_width - 1) file << "\t";
+            }
+            file << "\n";
         }
+    }
+
+    template<typename T, typename Formatter>
+    void dump_buffer_ppm(const string& filename, const vector<vector<T>>& buffer, Formatter to_color) const {
+        ofstream file(filename);
+        if (!file.is_open()) { clog << "Error: could not open " << filename << "\n"; return; }
+        file << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+        for (int j = 0; j < image_height; j++)
+            for (int i = 0; i < image_width; i++)
+                write_color(file, to_color(buffer[i][j]));
+    }
+
+    void compute_sobel_edges(const double& threshold = 0.05) {
+        auto sample_depth = [&](int x, int y) -> double {
+            x = max(0, min(x, image_width - 1));
+            y = max(0, min(y, image_height - 1));
+            double d = fb_depth[x][y];
+            return d == infinity ? 0.0 : d;
+        };
+
+        auto sample_normal = [&](int x, int y) -> vec3 {
+            x = max(0, min(x, image_width - 1));
+            y = max(0, min(y, image_height - 1));
+            return fb_normal[x][y];
+        };
+
+        vector<vector<double>> edge_depth;
+        edge_depth.assign(image_width, vector<double>(image_height, 0.0));
+        vector<vector<double>> edge_normal;
+        edge_normal.assign(image_width, vector<double>(image_height, 0.0));
+
+        for (int j = 0; j < image_height; j++) {
+            for (int i = 0; i < image_width; i++) {
+                double s_depth_x = sample_depth(i+1, j-1) + 2*sample_depth(i+1, j) + sample_depth(i+1, j+1)
+                                 - sample_depth(i-1, j-1) - 2*sample_depth(i-1, j) - sample_depth(i-1, j+1);
+                double s_depth_y = sample_depth(i-1, j-1) + 2*sample_depth(i, j-1) + sample_depth(i+1, j-1)
+                                 - sample_depth(i-1, j+1) - 2*sample_depth(i, j+1) - sample_depth(i+1, j+1);
+
+                vec3 s_normal_x = sample_normal(i+1, j-1) + 2*sample_normal(i+1, j) + sample_normal(i+1, j+1)
+                                - sample_normal(i-1, j-1) - 2*sample_normal(i-1, j) - sample_normal(i-1, j+1);
+                vec3 s_normal_y = sample_normal(i-1, j-1) + 2*sample_normal(i, j-1) + sample_normal(i+1, j-1)
+                                - sample_normal(i-1, j+1) - 2*sample_normal(i, j+1) - sample_normal(i+1, j+1);
+
+                edge_depth[i][j] = sqrt(s_depth_x * s_depth_x + s_depth_y * s_depth_y);
+                edge_normal[i][j] = sqrt(s_normal_x.length_squared() + s_normal_y.length_squared());
+
+                double edge_d = edge_depth[i][j]  > depth_threshold  ? 1.0 : 0.0;
+                double edge_n = edge_normal[i][j] > normal_threshold ? 1.0 : 0.0;
+                fb_edge[i][j] = max(edge_d, edge_n);
+
+                write_color(cout, (1.0 - fb_edge[i][j]) * fb_color[i][j]);
+            }
+        }
+
+#if DEBUG == 1
+        dump_buffer("edge_depth.txt", edge_depth, [](const double& d) {
+            return to_string(d);
+        });
+        dump_buffer("edge_normal.txt", edge_normal, [](const double& d) {
+            return to_string(d);
+        });
+
+        dump_buffer_ppm("sobel_depth.ppm",    edge_depth,  [](const double& d) { return color(d, d, d); });
+        dump_buffer_ppm("sobel_normal.ppm",   edge_normal, [](const double& d) { return color(d, d, d); });
+        dump_buffer_ppm("sobel_combined.ppm", fb_edge, [](const double& d) { return color(d, d, d); });
+        dump_buffer_ppm("fb_depth.ppm",  fb_depth, [](const double& d) { return color(d, d, d); });
+        dump_buffer_ppm("fb_normal.ppm", fb_normal, [](const vec3& n) { return 0.5 * color(n.x()+1, n.y()+1, n.z()+1); });
+#endif
     }
 
     vec3 sample_square() const {

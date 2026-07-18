@@ -4,8 +4,12 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
+#include <functional>
 #include <limits>
 #include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 using namespace std;
 

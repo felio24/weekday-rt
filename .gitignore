@@ -16,3 +16,4 @@ main
 
 # Image outputs
 *.ppm
+*.txt
