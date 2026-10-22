@@ -204,13 +204,13 @@ int main(int argc, char *argv[]) {
             options.image_width = width;
         } else if (arg == "--samples") {
             if (i + 1 >= argc) {
-                cerr << invalid_range_error("--samples", min_sample, max_sample) << "\n";
+                cerr << invalid_range_error("--samples", min_samples, max_samples) << "\n";
                 return 1;
             }
 
             int samples;
-            if (!parse_int(argv[++i], min_sample, max_sample, samples)) {
-                cerr << invalid_range_error("--samples", min_sample, max_sample) << "\n";
+            if (!parse_int(argv[++i], min_samples, max_samples, samples)) {
+                cerr << invalid_range_error("--samples", min_samples, max_samples) << "\n";
                 return 1;
             }
 
