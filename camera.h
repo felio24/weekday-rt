@@ -6,12 +6,16 @@
 
 #include <chrono>
 
-#define FILTER 0 // 0 = box, 1 = tent
 #define DEBUG  0 // 0 = no depth and edge output, 1 = individual depth and edge outline printed
 
 enum class post_process_mode {
     none,
     sobel_edge
+};
+
+enum class filter_mode {
+    box,
+    tent
 };
 
 class camera {
@@ -20,6 +24,7 @@ class camera {
     int     image_width       = 100; // Rendered image width in pixel count
     int     samples_per_pixel = 10;  // Count of random samples for each pixel
     int     max_depth         = 10;  // Maximum number of ray bounces into scene
+    filter_mode filter = filter_mode::box;
 
     double vfov = 90;                 // Vertical view angle (field of view)
     point3 lookfrom = point3(0,0,0);  // Point camera is looking from
@@ -138,22 +143,22 @@ class camera {
             for (int i = 0; i < image_width; i++) {
                 color pixel_color(0,0,0);
                 color aggregated_pixel_color(0,0,0);
-#if FILTER == 0
-                for (int sample = 0; sample < samples_per_pixel; sample++) {
-                    ray r = get_ray(i, j);
-                    pixel_color += ray_color(r, max_depth, world);
+                if (filter == filter_mode::box) {
+                    for (int sample = 0; sample < samples_per_pixel; sample++) {
+                        ray r = get_ray(i, j);
+                        pixel_color += ray_color(r, max_depth, world);
+                    }
+                    aggregated_pixel_color = pixel_samples_scale * pixel_color; // remember to divide by the number of samples in each pixel
+                } else {
+                    double total_weight = 0.0;
+                    for (int sample = 0; sample < samples_per_pixel; sample++) {
+                        double weight;
+                        ray r = get_ray_tent(i, j, weight);
+                        pixel_color += weight * ray_color(r, max_depth, world);
+                        total_weight += weight;
+                    }
+                    aggregated_pixel_color = pixel_color / total_weight;
                 }
-                aggregated_pixel_color = pixel_samples_scale * pixel_color; // remember to divide by the number of samples in each pixel
-#else
-                double total_weight = 0.0;
-                for (int sample = 0; sample < samples_per_pixel; sample++) {
-                    double weight;
-                    ray r = get_ray_tent(i, j, weight);
-                    pixel_color += weight * ray_color(r, max_depth, world);
-                    total_weight += weight;
-                }
-                aggregated_pixel_color = pixel_color / total_weight;
-#endif
                 //write_color(cout, aggregated_pixel_color);
                 fb_color[i][j] = aggregated_pixel_color;
             }
