@@ -9,6 +9,11 @@
 #define FILTER 0 // 0 = box, 1 = tent
 #define DEBUG  0 // 0 = no depth and edge output, 1 = individual depth and edge outline printed
 
+enum class post_process_mode {
+    none,
+    sobel_edge
+};
+
 class camera {
   public:
     double  aspect_ratio      = 1.0; // Ratio of image width over height
@@ -26,6 +31,8 @@ class camera {
 
     double depth_threshold  = 0.5; // For sobel edge detection
     double normal_threshold = 0.8; // For sobel edge detection
+
+    post_process_mode effect = post_process_mode::none;
 
     void render(const hittable& world) {
         initialize();
@@ -154,7 +161,30 @@ class camera {
     }
 
     void post_process() {
-        compute_sobel_edges();
+        switch (effect) {
+            case post_process_mode::none:
+                break;
+
+            case post_process_mode::sobel_edge:
+                compute_sobel_edges();
+                blur_edge_buffer();
+                break;
+        }
+        composite_and_output(effect);
+    }
+
+    void composite_and_output(post_process_mode effect) {
+        for (int j = 0; j < image_height; j++)
+            for (int i = 0; i < image_width; i++) {
+                switch (effect) {
+                    case post_process_mode::none:
+                        write_color(cout, fb_color[i][j]);
+                        break;
+                    case post_process_mode::sobel_edge:
+                        write_color(cout, (1.0 - fb_edge[i][j]) * fb_color[i][j]);
+                        break;
+                }
+            }
     }
 
     ray get_ray(int i, int j) const {
@@ -248,8 +278,6 @@ class camera {
                 double edge_d = edge_depth[i][j]  > depth_threshold  ? 1.0 : 0.0;
                 double edge_n = edge_normal[i][j] > normal_threshold ? 1.0 : 0.0;
                 fb_edge[i][j] = max(edge_d, edge_n);
-
-                write_color(cout, (1.0 - fb_edge[i][j]) * fb_color[i][j]);
             }
         }
 
@@ -267,6 +295,33 @@ class camera {
         dump_buffer_ppm("fb_depth.ppm",  fb_depth, [](const double& d) { return color(d, d, d); });
         dump_buffer_ppm("fb_normal.ppm", fb_normal, [](const vec3& n) { return 0.5 * color(n.x()+1, n.y()+1, n.z()+1); });
 #endif
+    }
+
+    void blur_edge_buffer() {
+        vector<vector<double>> blurred;
+        blurred.assign(image_width, vector<double>(image_height, 0.0));
+
+        auto sample_edge = [&](int x, int y) -> double {
+            x = max(0, min(x, image_width - 1));
+            y = max(0, min(y, image_height - 1));
+            return fb_edge[x][y];
+        };
+
+        int edge_blur_radius = 1;  // 1 = 3x3 kernel, 2 = 5x5, etc.
+        for (int j = 0; j < image_height; j++) {
+            for (int i = 0; i < image_width; i++) {
+                double sum = 0.0;
+                double sum_sample = 0.0;
+                for (int dj = -edge_blur_radius; dj <= edge_blur_radius; dj++)
+                    for (int di = -edge_blur_radius; di <= edge_blur_radius; di++) {
+                        sum += sample_edge(i + di, j + dj);
+                        sum_sample++;
+                    }
+                blurred[i][j] = sum / sum_sample;
+            }
+        }
+
+        fb_edge = blurred;
     }
 
     vec3 sample_square() const {

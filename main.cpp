@@ -114,11 +114,13 @@ int main(int argc, char *argv[])
 
     bool preview   = false;
     bool debugView = false;
+    bool edgeOutline = false;
 
     for (int i = 1; i < argc; i++) {
         string arg = argv[i];
-        if (arg == "--preview") preview   = true;
-        if (arg == "--debug")   debugView = true;
+        if (arg == "--preview")    preview   = true;
+        else if (arg == "--debug") debugView = true;
+        else if (arg == "--edges") edgeOutline = true;
     }
 
 
@@ -139,6 +141,9 @@ int main(int argc, char *argv[])
             0.1,
             make_shared<lambertian>(color(1,0,0))));
     }
+
+    if (edgeOutline)
+        scene.cam.effect = post_process_mode::sobel_edge;
     
     scene.cam.render(scene.world);
 }
