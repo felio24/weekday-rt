@@ -1,18 +1,17 @@
 # macOS
 .DS_Store
+*.dSYM/
 
-# VS Code settings
+# VS Code
 .vscode/*
 
-# Build artifacts
+# Build outputs
 *.o
 *.obj
 *.exe
 *.out
 main
 
-# Xcode / Apple toolchain debug info
-*.dSYM/
-
-# Image outputs
+# Render outputs
 *.ppm
+edge_*.txt

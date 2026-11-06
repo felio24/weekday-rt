@@ -19,7 +19,7 @@ Build the renderer:
 make
 
 # Or without
-g++ -std=c++17 -02 main.cpp -o main
+g++ -std=c++17 -O2 main.cpp -o main
 
 # Full quality render
 ./main > image.ppm
